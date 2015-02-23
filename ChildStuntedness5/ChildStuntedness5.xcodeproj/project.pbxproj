@@ -28,6 +28,8 @@
 		78102F281A9B3157009EDA27 /* stdc++.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "stdc++.h"; sourceTree = "<group>"; };
 		78102F291A9B3157009EDA27 /* TestRunner.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TestRunner.cpp; sourceTree = "<group>"; };
 		78102F2B1A9B320E009EDA27 /* ChildStuntedness5.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChildStuntedness5.h; sourceTree = "<group>"; };
+		78FE81C11A9BBA83006198D2 /* ridge_regression.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ridge_regression.h; sourceTree = "<group>"; };
+		78FE81C21A9BBCB0006198D2 /* utils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = utils.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -63,6 +65,8 @@
 				78102F271A9B311C009EDA27 /* ChildStuntednessPsycho4.h */,
 				78102F281A9B3157009EDA27 /* stdc++.h */,
 				78102F291A9B3157009EDA27 /* TestRunner.cpp */,
+				78FE81C11A9BBA83006198D2 /* ridge_regression.h */,
+				78FE81C21A9BBCB0006198D2 /* utils.h */,
 				78102F2B1A9B320E009EDA27 /* ChildStuntedness5.h */,
 			);
 			path = ChildStuntedness5;
@@ -238,6 +242,7 @@
 				78102F261A9B30E5009EDA27 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

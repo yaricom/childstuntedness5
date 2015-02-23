@@ -137,7 +137,7 @@ public:
     }
     
     Matrix& subMatrix(int i0, int i1, int j0, int j1) const {
-        assert(i0 >= 0 && i0 < i1 && i1 < m && j0 >= 0 && j0 < j1 && j1 < n);
+        assert(i0 >= 0 && i0 <= i1 && i1 < m && j0 >= 0 && j0 <= j1 && j1 < n);
         Matrix *X = new Matrix(i1 - i0 + 1, j1 - j0 + 1);
         for (int i = i0; i <= i1; i++) {
             for (int j = j0; j <= j1; j++) {
@@ -392,7 +392,279 @@ protected:
 // -----------------------------------------
 //
 
+struct RRConfig {
+    bool useBootstrap;
+    int bootstrapSamples;
+    int bootstrapMode;
+    int bootstrapIterations;
+    int regressionIterations;
+    int regressionMode;
+    
+    int approxSamples;
+    int approxMode;
+    int approxIterations;
+};
 
+#define VERBOSE 0
+class RidgeRegression {
+    // regression coefficients
+    VD regrCoef;
+    // initial regression coefficients (usually 0)
+    VD regrCoefSeed;
+    // residual errors per observation
+    VD obsErrors;
+    
+    // the OOB errors calculated if bootstrap used
+    VD oobErrors;
+    
+    // the configuration
+    RRConfig config;
+    
+    // the number of observations/samples
+    size_t obs = -1;
+    // the number of features per observation
+    size_t var = -1;
+    
+    // flag to indicate that data structures initialize
+    int init = -1;
+    // flag to indicate that approximate regression coeff was calculated
+    int seed = -1;
+    
+    // the calculated MSE after regression complete
+    double MSE = 0;
+    // the initial MSE before regresion starts
+    double MSE_init = 0;
+    
+public:
+    RidgeRegression(RRConfig conf) : config(conf) {}
+
+    void train(const VVD &train, const VD &check) {
+        Assert(train.size() == check.size(), "Samples size should be equal to observations size");
+        // find number of variables and observations
+        var = train[0].size();
+        obs = train.size();
+        
+        initDataStructures();
+        if (config.useBootstrap) {
+            bootstrap(train, check, config.bootstrapSamples, config.bootstrapMode, config.bootstrapIterations);
+            regress(train, check, config.regressionMode, config.regressionIterations, 1);
+        } else {
+            initFeaturesSeed(train, check, config.approxMode, config.approxSamples, config.approxIterations);
+            regress(train, check, config.regressionMode, config.regressionIterations, 1);
+        }
+    }
+
+    double predict(const VD &features) {
+        Assert(features.size() == var, "Features size should be equal to train features size, but was: %li", features.size());
+        double res = 0;
+        for (int i = 0; i < features.size(); i++) {
+            res += features[i] * regrCoef[i];
+        }
+        return res;
+    }
+    
+private:
+
+    void initFeaturesSeed(const VVD &train, const VD &check, const long mode, const long nvalid, const long niter) {
+        // initialize data structure
+        if (seed==1) {
+            regrCoefSeed.clear();
+        } else {
+            seed=1;
+        }
+        regrCoefSeed.resize(var, 0);
+        
+        double nsvar, nsvar_max = -1;
+        for (int n = 0; n < nvalid; n++) {
+            nsvar = regress(train, check, mode, niter, 0);
+            if (nsvar > nsvar_max) {
+                nsvar_max = nsvar;
+                for (int k = 0; k < var; k++) {
+                    regrCoefSeed[k] = regrCoef[k];
+                }
+            }
+        }
+    }
+
+    void bootstrap(const VVD &train, const VD &check, const long nsample, const long mode, const long niter) {
+        /* need to run Regress_init first if the data set is new */
+        Assert(init == 1, "Must run initDataStructures() fisrt.\n");
+        
+        // initialize data structure
+        if (seed==1) {
+            regrCoefSeed.clear();
+        } else {
+            seed=1;
+        }
+        regrCoefSeed.resize(var, 0);
+        
+        VVD bootTrain, bootTest;
+        VD bootCheck, bootCheckTest;
+        
+        // the best found regression coefficients
+        VD bestCoef(var, 0);
+        
+        // array to store selected indices
+        VI pick(obs, 0);
+        int k, idx, m, oi;
+        double oobMSE, oobME, minOOBMSE = numeric_limits<double>::max();
+        for (int n = 0; n < nsample; n++) {
+            // pick up random observations
+            for (k = 0; k < obs; k++) { pick[k] = 0; }
+            for (k = 0; k < obs; k++) {
+                idx = rand() % obs;
+                pick[idx]++;
+            }
+            
+            // create subsample
+            for (m = 0; m < obs; m++) {
+                if (pick[m] > 0) {
+                    // save pick[m] copies of row in data
+                    for (k = 0; k < pick[m]; k++) {
+                        bootTrain.push_back(train[m]);
+                        bootCheck.push_back(check[m]);
+                    }
+                } else {
+                    // save current row as test sample
+                    bootTest.push_back(train[m]);
+                    bootCheckTest.push_back(check[m]);
+                }
+            }
+            // do regression
+            initDataStructures();
+            regress(bootTrain, bootCheck, mode, niter, 0);
+            
+            // find OOB error
+            oobMSE = 0;
+            for (oi = 0; oi < bootTest.size(); oi++) {
+                oobME = predict(bootTest[oi]) - bootCheckTest[oi];
+                oobMSE += oobME * oobME;
+            }
+            oobMSE = sqrt(oobMSE /(double)bootTest.size());
+            oobErrors.push_back(oobMSE);
+            if (oobMSE < minOOBMSE) {
+                oobMSE = minOOBMSE;
+                // store current regression coefficients
+                bestCoef.swap(regrCoef);
+            }
+        }
+        
+        // store best regression coefficients as train results
+        regrCoefSeed.swap(bestCoef);
+    }
+
+    double regress(const VVD &features, const VD &dv, const long mode, const long niter, const long seed_flag) {
+        /* need to run Regress_init first if the data set is new */
+        Assert(init == 1, "Must run initDataStructures() fisrt.\n");
+        
+        int k, l, i, iter;
+        double xd, sp, lambda, val, e_new, resvar = 0;
+        
+        // calculate initial MSE
+        MSE_init = 0;
+        for (k = 0; k < obs; k++) {
+            val = dv[k];
+            MSE_init += val * val;
+            obsErrors[k] = val;
+        }
+        MSE_init = sqrt(MSE_init / obs);
+        
+        // clear regression coefficients
+        for (k = 1; k < var; k++) {
+            regrCoef[k] = 0;
+        }
+        
+        // if seed=1 uses initial regressors
+        if (seed_flag == 1) {
+            Assert(seed == 1, "Must run initFeaturesSeed() first.\n");
+            
+            for (k = 0; k < var; k++) {
+                regrCoef[k] = regrCoefSeed[k];
+            }
+            
+            for (i = 0; i < obs; i++) {
+                e_new = 0;
+                for (k = 0; k < var; k++) {
+                    val = features[i][k];
+                    e_new += regrCoef[k] * val;
+                }
+                // find error
+                obsErrors[i] = dv[i] - e_new;
+            }
+        }
+        
+        /*
+         regression
+         */
+        for (iter = 0; iter < niter; iter++) {
+            if (mode == 0 || mode == 3) {
+                // 0: visits each variable sequentially starting with first
+                l = iter % var;
+            } else {
+                // 1: visits variables in random order; should be the default mode
+                // 2: same as mode = 1, but lambda not randomized
+                l = rand() % var;
+            }
+            
+            xd = 0; sp = 0;
+            for (k = 0; k < obs; k++) {
+                xd += features[k][l] * features[k][l];
+                sp += features[k][l] * obsErrors[k];
+            }
+            Assert(xd != 0, "Empty column found at index: %i", l);
+            
+            lambda = sp / xd;
+            if (mode == 1) {
+                lambda = lambda * rand() / (double)RAND_MAX;
+            }
+            
+            // update error
+            MSE = 0;
+            for (k = 0; k < obs; k++) {
+                e_new = obsErrors[k] - lambda * features[k][l];
+                MSE += e_new * e_new;
+                obsErrors[k] = e_new;
+            }
+            regrCoef[l] += lambda;
+            
+            /*
+             save results, compute resvar
+             */
+            
+            if (iter % 10 == VERBOSE || iter == niter-1) {
+                MSE = sqrt(MSE / obs);
+                resvar = 1 - MSE / MSE_init;
+                if (LOG_DEBUG) {
+                    Printf("REGRESS %d\t%d\t%f\t%f\t", iter, l, lambda, resvar);
+                    print(regrCoef);
+                }
+            }
+        }
+        return resvar;
+    }
+    
+    /**
+     * Reinitialize internal data structures.
+     */
+    void initDataStructures() {
+        // clear data if needed
+        if (init == 1) {
+            regrCoef.clear();
+            obsErrors.clear();
+        } else  {
+            init = 1;
+        }
+        
+        // resize internal data structures
+        regrCoef.resize(var, 0);
+        obsErrors.resize(obs, 0);
+    }
+    
+};
+
+//
+// ---------------------------------------------------------
+//
 struct Entry {
     constexpr static const double NVL = -1000.0;
     
@@ -441,14 +713,14 @@ struct Entry {
             case 0:
                 Assert(v.size() == 7 || v.size() == 8, "Features size for first scenario, expected 7/8, but was: %lu", v.size());
                 pos = parseScenario0(v);
-                hasIQ = (pos == 7);
+                hasIQ = (v.size() == 8);
                 break;
                 
             case 1:
                 Assert(v.size() == 16 || v.size() == 17, "Features size for second scenario, expected 16/17, but was: %lu", v.size());
                 pos = parseScenario0(v);
                 pos = parseScenario1(v, pos);
-                hasIQ = (pos == 16);
+                hasIQ = (v.size() == 17);
                 break;
                 
             case 2:
@@ -456,7 +728,7 @@ struct Entry {
                 pos = parseScenario0(v);
                 pos = parseScenario1(v, pos);
                 pos = parseScenario2(v, pos);
-                hasIQ = (pos == 26);
+                hasIQ = (v.size() == 27);
                 break;
         }
         // store IQ
@@ -593,13 +865,52 @@ public:
         VVE trainEntries = readEntries(training, scenario);
         VVE testEntries = readEntries(testing, scenario);
         
+        VD res;
         if (scenario == 0) {
             Matrix trainMatrix = prepareScenario1Features(trainEntries, true);
             Matrix testMatrix = prepareScenario1Features(testEntries, false);
+            
+            res = rankScenario1(trainMatrix, trainEntries, testMatrix, testEntries);
+        }
+
+        return res;
+    }
+    
+private:
+    VD rankScenario1(const Matrix &trainM, const VVE &trainEntries,  const Matrix &testM, const VVE &testEntries) {
+        cerr << "=========== Rank by Ridge regression ===========" << endl;
+        
+        double startTime = getTime();
+        
+        RRConfig conf;
+        conf.useBootstrap = true;
+        conf.bootstrapSamples = 10;
+        conf.bootstrapMode = 1;
+        conf.bootstrapIterations = 5600;
+        conf.regressionIterations = 5600;
+        conf.regressionMode = 0;
+        RidgeRegression ridge(conf);
+        Matrix trM = trainM.subMatrix(0, (int)trainM.rows() - 1, 0, (int)trainM.cols() - 2);
+        Matrix dvM = trainM.subMatrix(0, (int)trainM.rows() - 1, (int)trainM.cols() - 1, (int)trainM.cols() - 1);
+        VD dv;
+        dvM.columnToArray(0, dv);
+        
+        ridge.train(trM.A, dv);
+        
+        // predict
+        VD res;
+        int index = 0;
+        for (const VE &smpls : testEntries) {
+            for (int i = 0; i < smpls.size(); i++) {
+                res.push_back((int)ridge.predict(testM[index++]));
+            }
         }
         
+        print(res);
         
-        VD res;
+        double finishTime = getTime();
+        
+        Printf("Rank time: %f\n", finishTime - startTime);
         return res;
     }
 };

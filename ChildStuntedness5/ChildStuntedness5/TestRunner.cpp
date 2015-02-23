@@ -113,19 +113,25 @@ namespace am {
                 // prepare train data
                 //
                 DTrain.clear();
+                double mean = 0;
+                int countIq = 0;
                 for (int i = train_start_index; i < test_start_index; i++) {
                     VS rows = dataSamples[i];
                     for (int r = 0; r < rows.size(); r++) {
                         string line = rows[r];
+                        VS values = splt(line);
+                        double iq = atof(values[iqCol].c_str());
+                        
                         if (scenario > 0) {
                             DTrain.push_back(line);
-                        } else {
+                        } else if (iq > 0) {
                             // add only line with IQ set for 1 scenario
-                            VS values = splt(line);
-                            double iq = atof(values[iqCol].c_str());
-                            if (iq > 0) {
-                               DTrain.push_back(line);
-                            }
+                            DTrain.push_back(line);
+                        }
+                        
+                        if (iq > 0) {
+                            mean += iq;
+                            countIq++;
                         }
                     }
                 }
@@ -156,14 +162,10 @@ namespace am {
                 //
                 // calculate sse0
                 //
-                double mean = 0;
-                for (const double &iq : groundTruth) {
-                    mean += iq;
-                }
-                mean /= groundTruth.size();
+                mean /= countIq;
                 sse0 = 0;
                 for (const double &iq : groundTruth) {
-                    double e = iq - mean;
+                    double e = mean - iq;
                     sse0 += e * e;
                 }
             }
