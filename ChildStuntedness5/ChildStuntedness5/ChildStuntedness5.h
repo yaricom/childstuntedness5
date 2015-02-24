@@ -439,7 +439,7 @@ public:
     RidgeRegression(RRConfig conf) : config(conf) {}
 
     void train(const VVD &train, const VD &check) {
-        Assert(train.size() == check.size(), "Samples size should be equal to observations size");
+        Assert(train.size() == check.size(), "Samples size should be equal to observations size! Samples: %lu, observations: %lu", train.size(), check.size());
         // find number of variables and observations
         var = train[0].size();
         obs = train.size();
@@ -804,44 +804,139 @@ VVE readEntries(const VS &data, const int scenario) {
 
 Matrix& prepareScenario1Features(const VVE &data, const bool training) {
     // sexn, gagebrth, birthwt, birthlen, apgar1, apgar5
-    int gagebrth = 0, birthwt = 0, birthlen = 0, apgar1 = 0, apgar5 = 0, count = 0;
+    int gagebrth = 0, birthwt = 0, birthlen = 0, apgar1 = 0, apgar5 = 0;
+    VI counts(5, 0);
     for (const VE &smpls : data) {
         for (int i = 0; i < smpls.size(); i++) {
-            gagebrth += smpls[i].gagebrth;
-            birthwt += smpls[i].birthwt;
-            birthlen += smpls[i].birthlen;
-            apgar1 += smpls[i].apgar1;
-            apgar5 += smpls[i].apgar5;
-            
-            count++;
+            if (smpls[i].gagebrth != Entry::NVL) {
+                gagebrth += smpls[i].gagebrth;
+                counts[0] += 1;
+            }
+            if (smpls[i].birthwt != Entry::NVL) {
+                birthwt += smpls[i].birthwt;
+                counts[1] += 1;
+            }
+            if (smpls[i].birthlen != Entry::NVL) {
+                birthlen += smpls[i].birthlen;
+                counts[2] += 1;
+            }
+            if (smpls[i].apgar1 != Entry::NVL) {
+                apgar1 += smpls[i].apgar1;
+                counts[3] += 1;
+            }
+            if (smpls[i].apgar5 != Entry::NVL) {
+                apgar5 += smpls[i].apgar5;
+                counts[4] += 1;
+            }
         }
     }
     // find mean average
-    gagebrth /= count;
-    birthwt /= count;
-    birthlen /= count;
-    apgar1 /= count;
-    apgar5 /= count;
+    gagebrth    /= counts[0];
+    birthwt     /= counts[1];
+    birthlen    /= counts[2];
+    apgar1      /= counts[3];
+    apgar5      /= counts[4];
     
     // build data matrix
     VVD features;
     for (const VE &smpls : data) {
         VD row;
-        for (int i = 0; i < smpls.size(); i++) {
-            row.push_back(smpls[i].sexn);
-            row.push_back(smpls[i].gagebrth == Entry::NVL ? gagebrth : smpls[i].gagebrth);
-            row.push_back(smpls[i].birthwt == Entry::NVL ? birthwt : smpls[i].birthwt);
-            row.push_back(smpls[i].birthlen == Entry::NVL ? birthlen : smpls[i].birthlen);
-            row.push_back(smpls[i].apgar1 == Entry::NVL ? apgar1 : smpls[i].apgar1);
-            row.push_back(smpls[i].apgar5 == Entry::NVL ? apgar5 : smpls[i].apgar5);
-            
-            if (training) {
-                row.push_back(smpls[i].geniq);
-            }
-        }
+        row.push_back(smpls[0].sexn);
+        row.push_back(smpls[0].gagebrth == Entry::NVL ? gagebrth : smpls[0].gagebrth);
+        row.push_back(smpls[0].birthwt == Entry::NVL ? birthwt : smpls[0].birthwt);
+        row.push_back(smpls[0].birthlen == Entry::NVL ? birthlen : smpls[0].birthlen);
+        row.push_back(smpls[0].apgar1 == Entry::NVL ? apgar1 : smpls[0].apgar1);
+        row.push_back(smpls[0].apgar5 == Entry::NVL ? apgar5 : smpls[0].apgar5);
         features.push_back(row);
     }
     
+    Matrix *m = new Matrix(features);
+    return *m;
+}
+
+double predictWTKG(const VE &smpls, const int pos) {
+    int low = pos - 1, high = pos + 1;
+    while (low >= 0 && smpls[low].wtkg == Entry::NVL) low--;
+    while (high < smpls.size() && smpls[high].wtkg == Entry::NVL) high++;
+    double w = (smpls[pos].agedays - smpls[low].agedays) / (smpls[high].agedays - smpls[low].agedays);
+    double wtkg = smpls[low].wtkg * (1 - w) + smpls[high].wtkg * w;
+    return wtkg;
+}
+
+double predictL(const VE &smpls, const int pos) {
+    int low = pos - 1, high = pos + 1;
+    while (low >= 0 && smpls[low].htcm == Entry::NVL && smpls[low].lencm == Entry::NVL) low--;
+    while (high < smpls.size() && smpls[high].htcm == Entry::NVL && smpls[high].lencm == Entry::NVL) high++;
+    
+    double w = (smpls[pos].agedays - smpls[low].agedays) / (smpls[high].agedays - smpls[low].agedays);
+    double lowL = (smpls[low].htcm == Entry::NVL ? smpls[low].lencm : smpls[low].htcm);
+    double highL = (smpls[high].htcm == Entry::NVL ? smpls[high].lencm : smpls[high].htcm);
+    
+    double L = lowL * (1 - w) + highL * w;
+    return L;
+}
+
+Matrix& prepareScenario2Features(const VVE &data, const bool training) {
+    // agedays, wtkg, htcm, lencm, bmi, waz, haz, whz, baz
+    VVD features;
+    for (const VE &smpls : data) {
+        Printf("ID: %i, samples: %lu\n", smpls[0].subjid, smpls.size());
+        
+        double wtkg = 0, len = 0, bmi = 0, waz = 0, haz = 0, whz = 0, baz = 0;
+        VI counts(7, 0);
+        for (int i = 0; i < smpls.size(); i++) {
+            double w, l;
+            // add wtkg
+            if (smpls[i].wtkg != Entry::NVL) {
+                w = smpls[i].wtkg;
+            } else {
+                w = predictWTKG(smpls, i);
+            }
+            wtkg += w;
+            counts[0]++;
+            
+            // add lenght
+            if (smpls[i].htcm != Entry::NVL) {
+                l = smpls[i].htcm;
+            } else if (smpls[i].lencm != Entry::NVL) {
+                l = smpls[i].lencm;
+            } else {
+                l = predictL(smpls, i);
+            }
+            len += l;
+            counts[1]++;
+            
+            // add bmi
+            if (smpls[i].bmi != Entry::NVL) {
+                bmi += smpls[i].bmi;
+            } else {
+                bmi += w / (l * l / 10000);
+            }
+            counts[2]++;
+            
+            if (smpls[i].waz != Entry::NVL) {
+                waz += smpls[i].waz;
+                counts[3]++;
+            }
+            
+            if (smpls[i].haz != Entry::NVL) {
+                haz += smpls[i].haz;
+                counts[4]++;
+            }
+            
+            if (smpls[i].whz != Entry::NVL) {
+                whz += smpls[i].whz;
+                counts[5]++;
+            }
+            
+            if (smpls[i].baz != Entry::NVL) {
+                baz += smpls[i].baz;
+                counts[6]++;
+            }
+        }
+        VD row = {wtkg / counts[0], len / counts[1], bmi / counts[2], waz / counts[3], haz / counts[4], whz / counts[5], baz / counts[6]};
+        features.push_back(row);
+    }
     Matrix *m = new Matrix(features);
     return *m;
 }
@@ -867,18 +962,35 @@ public:
         
         VD res;
         if (scenario == 0) {
-            Matrix trainMatrix = prepareScenario1Features(trainEntries, true);
-            Matrix testMatrix = prepareScenario1Features(testEntries, false);
+            Matrix trainFeatures = prepareScenario1Features(trainEntries, true);
+            Matrix testFeatures = prepareScenario1Features(testEntries, false);
             
-            res = rankScenario1(trainMatrix, trainEntries, testMatrix, testEntries);
+            res = rankScenario1(trainFeatures, trainEntries, testFeatures, testEntries);
+        } else if (scenario == 1) {
+            Matrix trainFeatures0 = prepareScenario1Features(trainEntries, true);
+            Matrix testFeatures0 = prepareScenario1Features(testEntries, false);
+            
+            Matrix trainFeatures1 = prepareScenario2Features(trainEntries, true);
+            Matrix testFeatures1 = prepareScenario2Features(testEntries, false);
+            
+            res = rankScenario2(trainFeatures0, trainFeatures1, trainEntries, testFeatures0, testFeatures1, testEntries);
         }
 
         return res;
     }
     
 private:
-    VD rankScenario1(const Matrix &trainM, const VVE &trainEntries,  const Matrix &testM, const VVE &testEntries) {
-        cerr << "=========== Rank by Ridge regression ===========" << endl;
+    VD rankScenario2(const Matrix &trainFeatures0, const Matrix &trainFeatures1, const VVE &trainEntries,  const Matrix &testFeatures0, const Matrix &testFeatures1, const VVE &testEntries) {
+        cerr << "=========== Rank for scenario2 ===========" << endl;
+        
+        // predict
+        VD res;
+        
+        return res;
+    }
+    
+    VD rankScenario1(const Matrix &trainFeatures, const VVE &trainEntries,  const Matrix &testFeatures, const VVE &testEntries) {
+        cerr << "=========== Rank for scenario 1 ===========" << endl;
         
         double startTime = getTime();
         
@@ -890,19 +1002,19 @@ private:
         conf.regressionIterations = 5600;
         conf.regressionMode = 0;
         RidgeRegression ridge(conf);
-        Matrix trM = trainM.subMatrix(0, (int)trainM.rows() - 1, 0, (int)trainM.cols() - 2);
-        Matrix dvM = trainM.subMatrix(0, (int)trainM.rows() - 1, (int)trainM.cols() - 1, (int)trainM.cols() - 1);
         VD dv;
-        dvM.columnToArray(0, dv);
+        for (const VE &smpls : trainEntries) {
+            dv.push_back(smpls[0].geniq);
+        }
         
-        ridge.train(trM.A, dv);
+        ridge.train(trainFeatures.A, dv);
         
         // predict
         VD res;
         int index = 0;
         for (const VE &smpls : testEntries) {
             for (int i = 0; i < smpls.size(); i++) {
-                res.push_back((int)ridge.predict(testM[index++]));
+                res.push_back((int)ridge.predict(testFeatures[index++]));
             }
         }
         
