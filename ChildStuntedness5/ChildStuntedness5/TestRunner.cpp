@@ -92,7 +92,7 @@ namespace am {
                     }
                     // calculate score
                     double s = 1000000 * fmax(0, 1.0 - sse/sse0);
-                    Printf("%i.) Score  = %f\n", i, s);
+                    Printf("%i.) Score = %f, sse: %f, sse0: %f\n", i + 1, s, sse, sse0);
                     score += s;
                 }
                 return score / subsetsNum;
@@ -177,7 +177,7 @@ namespace am {
                     indices.insert(indices.begin(), sc3.begin(), sc3.end());
                 }
                 
-                if (scenario == 1) {
+                if (scenario >= 1) {
                     VI sc2 = {2, 3, 4, 5, 6, 7, 8, 9, 10};
                     indices.insert(indices.begin(), sc2.begin(), sc2.end());
                 }
