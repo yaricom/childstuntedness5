@@ -1484,49 +1484,7 @@ struct Entry {
     Entry(string s, int scenario) {
         VS v = splt(s, ',');
         int pos = 0;
-        bool hasIQ = false;
-        switch(scenario) {
-            case 0:
-                Assert(v.size() == 7 || v.size() == 8, "Features size for first scenario, expected 7/8, but was: %lu", v.size());
-                pos = parseScenario0(v);
-                hasIQ = (v.size() == 8);
-                break;
-                
-            case 1:
-                Assert(v.size() == 16 || v.size() == 17, "Features size for second scenario, expected 16/17, but was: %lu", v.size());
-                pos = parseScenario0(v);
-                pos = parseScenario1(v, pos);
-                hasIQ = (v.size() == 17);
-                break;
-                
-            case 2:
-                Assert(v.size() == 26 || v.size() == 27, "Features size for third scenario, expected 26/27, but was: %lu", v.size());
-                pos = parseScenario0(v);
-                pos = parseScenario1(v, pos);
-                pos = parseScenario2(v, pos);
-                hasIQ = (v.size() == 27);
-                break;
-        }
-        // store IQ
-        if (hasIQ) {
-            geniq = (int)stof(v[pos]);
-        }
-    }
-    
-    int parseScenario0(const VS &v) {
-        int pos = 0;
         subjid = (int)stof(v[pos++]);
-        sexn = (int)stof(v[pos++]);
-        gagebrth = (int)stof(v[pos++]);
-        birthwt = (int)stof(v[pos++]);
-        birthlen = (int)stof(v[pos++]);
-        apgar1 = (int)stof(v[pos++]);
-        apgar5 = (int)stof(v[pos++]);
-        
-        return pos;
-    }
-    
-    int parseScenario1(const VS &v, int pos) {
         agedays = (int)stof(v[pos++]);
         wtkg = stof(v[pos++]);
         htcm = stof(v[pos++]);
@@ -1536,13 +1494,14 @@ struct Entry {
         haz = stof(v[pos++]);
         whz = stof(v[pos++]);
         baz = stof(v[pos++]);
-        
-        return pos;
-    }
-    
-    int parseScenario2(const VS &v, int pos) {
         siteid = (int)stof(v[pos++]);
+        sexn = (int)stof(v[pos++]);
         feedingn = (int)stof(v[pos++]);
+        gagebrth = (int)stof(v[pos++]);
+        birthwt = (int)stof(v[pos++]);
+        birthlen = (int)stof(v[pos++]);
+        apgar1 = (int)stof(v[pos++]);
+        apgar5 = (int)stof(v[pos++]);
         mage = (int)stof(v[pos++]);
         demo1n = (int)stof(v[pos++]);
         mmaritn = (int)stof(v[pos++]);
@@ -1552,7 +1511,10 @@ struct Entry {
         meducyrs = (int)stof(v[pos++]);
         demo2n = (int)stof(v[pos++]);
         
-        return pos;
+        // store IQ
+        if (v.size() == 27) {
+            geniq = (int)stof(v[pos]);
+        }
     }
 };
 
@@ -1826,8 +1788,6 @@ Matrix& prepareScenario3Features(const VVE &data) {
 }
 
 class ChildStuntedness5 {
-    size_t X;
-    size_t Y;
     
 public:
     /**
@@ -1835,13 +1795,15 @@ public:
      * @param scenario The scenario parameter is also 0, 1, or 2, referring to the three scenarios listed above.
      */
     VD predict(const int testType, const int scenario, const VS &training, const VS &testing) {
-        X = training.size();
-        Y = testing.size();
+        size_t X = training.size();
+        size_t Y = testing.size();
         
         fprintf(stderr, "Test type: %i, scenario: %i, training size: %lu, test size: %lu\n", testType, scenario, X, Y);
         
         VVE trainEntries = readEntries(training, scenario);
         VVE testEntries = readEntries(testing, scenario);
+        
+        fprintf(stderr, "Training subjects: %lu, test subjects: %lu\n", trainEntries.size(), testEntries.size());
         
         VD res;
         if (scenario == 0) {
@@ -1905,7 +1867,7 @@ private:
         conf.learning_rate = 0.001;
         conf.tree_min_nodes = 10;
         conf.tree_depth = 7;
-        conf.tree_number = (int)trainFeatures1.rows();
+        conf.tree_number = 3000;//1500;
         
         GradientBoostingMachine tree(conf.sampling_size_ratio, conf.learning_rate, conf.tree_number, conf.tree_min_nodes, conf.tree_depth);
         PredictionForest *predictor = tree.train(trainFeatures.A, dv);
@@ -1915,7 +1877,7 @@ private:
             res.push_back(predictor->predict(testFeatures[i]));
         }
         
-        print(res);
+//        print(res);
         
         double finishTime = getTime();
         
@@ -1953,7 +1915,7 @@ private:
         conf.learning_rate = 0.001;
         conf.tree_min_nodes = 10;
         conf.tree_depth = 7;
-        conf.tree_number = (int)trainFeatures1.rows();
+        conf.tree_number = 4000;//1500;
         
         GradientBoostingMachine tree(conf.sampling_size_ratio, conf.learning_rate, conf.tree_number, conf.tree_min_nodes, conf.tree_depth);
         PredictionForest *predictor = tree.train(trainFeatures.A, dv);
@@ -1963,7 +1925,7 @@ private:
             res.push_back(predictor->predict(testFeatures[i]));
         }
         
-        print(res);
+//        print(res);
         
         double finishTime = getTime();
         
@@ -2003,7 +1965,7 @@ private:
         conf.learning_rate = 0.001;
         conf.tree_min_nodes = 10;
         conf.tree_depth = 7;
-        conf.tree_number = (int)trainFeatures.rows();
+        conf.tree_number = 4200;//1500;
         
         GradientBoostingMachine tree(conf.sampling_size_ratio, conf.learning_rate, conf.tree_number, conf.tree_min_nodes, conf.tree_depth);
         PredictionForest *predictor = tree.train(trainFeatures.A, dv);
@@ -2013,7 +1975,7 @@ private:
             res.push_back(predictor->predict(testFeatures[i]));
         }
         
-        print(res);
+//        print(res);
         
         double finishTime = getTime();
         

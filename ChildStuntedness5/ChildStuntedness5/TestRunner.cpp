@@ -135,7 +135,7 @@ namespace am {
                         }
                     }
                 }
-                filterDataSet(DTrain, scenario, true);
+//                filterDataSet(DTrain, scenario, true);
                 
                 //
                 // prepare test data
@@ -157,7 +157,7 @@ namespace am {
                         }
                     }
                 }
-                filterDataSet(DTest, scenario, false);
+//                filterDataSet(DTest, scenario, false);
                 
                 //
                 // calculate sse0
