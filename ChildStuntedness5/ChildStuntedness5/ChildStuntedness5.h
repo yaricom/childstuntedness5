@@ -1291,6 +1291,16 @@ struct Entry {
         if (v.size() == 27) {
             geniq = (int)stof(v[pos]);
         }
+        
+        // correct missing values
+        if (agedays == 1) {
+            if (wtkg == NVL && birthwt != NVL) {
+                wtkg = birthwt / 1000.0;
+            }
+            if (lencm == NVL && birthlen != NVL) {
+                lencm = birthlen;
+            }
+        }
     }
 };
 
@@ -1316,22 +1326,28 @@ VVE readEntries(const VS &data, const int scenario) {
     return rv;
 }
 
-Matrix& prepareScenario1Features(const VVE &data) {
+void correctFeatures(const VVE &data) {
+    
+}
+
+Matrix& prepareScenario1Features(VVE &data) {
     // sexn, gagebrth, birthwt, birthlen, apgar1, apgar5
-    int gagebrth = 0, birthwt = 0, birthlen = 0, apgar1 = 0, apgar5 = 0;
+    int gagebrth = 0, apgar1 = 0, apgar5 = 0;
     VI counts(5, 0);
+    VVI birthwt(2, VI(2, 0));
+    VVI birthlen(2, VI(2, 0));
     for (const VE &smpls : data) {
         if (smpls[0].gagebrth != Entry::NVL) {
             gagebrth += smpls[0].gagebrth;
             counts[0]++;
         }
         if (smpls[0].birthwt != Entry::NVL) {
-            birthwt += smpls[0].birthwt;
-            counts[1]++;
+            birthwt[smpls[0].sexn - 1][0] += smpls[0].birthwt;
+            birthwt[smpls[0].sexn - 1][1]++;
         }
         if (smpls[0].birthlen != Entry::NVL) {
-            birthlen += smpls[0].birthlen;
-            counts[2]++;
+            birthlen[smpls[0].sexn - 1][0] += smpls[0].birthlen;
+            birthlen[smpls[0].sexn - 1][1]++;
         }
         if (smpls[0].apgar1 != Entry::NVL) {
             apgar1 += smpls[0].apgar1;
@@ -1344,19 +1360,26 @@ Matrix& prepareScenario1Features(const VVE &data) {
     }
     // find mean average
     gagebrth    /= counts[0];
-    birthwt     /= counts[1];
-    birthlen    /= counts[2];
     apgar1      /= counts[3];
     apgar5      /= counts[4];
     
     // build data matrix
     VVD features;
-    for (const VE &smpls : data) {
+    for (VE &smpls : data) {
         VD row;
         row.push_back(smpls[0].sexn);
+        
         row.push_back(smpls[0].gagebrth == Entry::NVL ? gagebrth : smpls[0].gagebrth);
-        row.push_back(smpls[0].birthwt == Entry::NVL ? birthwt : smpls[0].birthwt);
-        row.push_back(smpls[0].birthlen == Entry::NVL ? birthlen : smpls[0].birthlen);
+        if (smpls[0].birthwt == Entry::NVL) {
+            smpls[0].birthwt = birthwt[smpls[0].sexn - 1][0] / birthwt[smpls[0].sexn - 1][1];
+        }
+        row.push_back(smpls[0].birthwt);
+        
+        if (smpls[0].birthlen == Entry::NVL) {
+            smpls[0].birthlen = birthlen[smpls[0].sexn - 1][0] / birthlen[smpls[0].sexn - 1][1];
+        }
+        row.push_back(smpls[0].birthlen);
+        
         row.push_back(smpls[0].apgar1 == Entry::NVL ? apgar1 : smpls[0].apgar1);
         row.push_back(smpls[0].apgar5 == Entry::NVL ? apgar5 : smpls[0].apgar5);
         features.push_back(row);
@@ -1411,7 +1434,6 @@ inline double safeDiv(const double a, const double b, const double d) {
 }
 
 
-
 Matrix& prepareScenario2Features(const VVE &data) {
     // agedays, wtkg, htcm, lencm, bmi, waz, haz, whz, baz
     VVD features;
@@ -1424,6 +1446,8 @@ Matrix& prepareScenario2Features(const VVE &data) {
             // add wtkg
             if (smpls[i].wtkg != Entry::NVL) {
                 w = smpls[i].wtkg;
+            } else if (smpls[i].agedays == 1 && smpls[i].birthwt != Entry::NVL) {
+                w = smpls[i].birthwt;
             } else {
                 w = predictWTKG(smpls, i);
             }
@@ -1437,6 +1461,8 @@ Matrix& prepareScenario2Features(const VVE &data) {
                 l = smpls[i].htcm;
             } else if (smpls[i].lencm != Entry::NVL) {
                 l = smpls[i].lencm;
+            } else if (smpls[i].agedays == 1 && smpls[i].birthlen != Entry::NVL) {
+                l = smpls[i].birthlen;
             } else {
                 l = predictL(smpls, i);
             }
@@ -1473,7 +1499,7 @@ Matrix& prepareScenario2Features(const VVE &data) {
                 counts[6]++;
             }
         }
-        VD row = {safeDiv(wtkg, counts[0], 0), safeDiv(len, counts[1], 0), safeDiv(bmi, counts[2], 0), safeDiv(waz, counts[3], 0), safeDiv(haz, counts[4], 0), safeDiv(whz, counts[5], 0), safeDiv(baz, counts[6], 0)};
+        VD row = {safeDiv(wtkg, counts[0], Entry::NVL), safeDiv(len, counts[1], Entry::NVL), safeDiv(bmi, counts[2], Entry::NVL), safeDiv(waz, counts[3], Entry::NVL), safeDiv(haz, counts[4], Entry::NVL), safeDiv(whz, counts[5], Entry::NVL), safeDiv(baz, counts[6], Entry::NVL)};
 #ifdef LOCAL
         for (int i = 0; i < row.size(); i++) {
             if (isnan(row[i]) == true) {
@@ -1648,22 +1674,15 @@ private:
         conf.learning_rate = 0.001;
         conf.tree_min_nodes = 10;
         conf.tree_depth = 7;
-        conf.tree_number = 1500;
-        
-        VI indices = {1,6,9,11,13,17,18,20,22,23};
-        for (int i = 0; i < indices.size(); i++) {
-            indices[i]--;
-        }
-        
-        Matrix trainFS = trainFeatures.subMatrix(0, (int)trainFeatures.rows() - 1, indices);
-        Matrix testFS = testFeatures.subMatrix(0, (int)testFeatures.rows() - 1, indices);
+        conf.tree_number = 2500;
+
         
         GradientBoostingMachine tree(conf.sampling_size_ratio, conf.learning_rate, conf.tree_number, conf.tree_min_nodes, conf.tree_depth);
-        PredictionForest *predictor = tree.train(trainFS.A, dv);
+        PredictionForest *predictor = tree.train(trainFeatures.A, dv);
         
         // predict
         for (int i = 0; i < testFeatures.rows(); i++) {
-            res.push_back(predictor->predict(testFS[i]));
+            res.push_back(predictor->predict(testFeatures[i]));
         }
         
 //        print(res);
@@ -1704,7 +1723,7 @@ private:
         conf.learning_rate = 0.001;
         conf.tree_min_nodes = 10;
         conf.tree_depth = 7;
-        conf.tree_number = 2000;//1500;
+        conf.tree_number = 3000;//1500;
         
         GradientBoostingMachine tree(conf.sampling_size_ratio, conf.learning_rate, conf.tree_number, conf.tree_min_nodes, conf.tree_depth);
         PredictionForest *predictor = tree.train(trainFeatures.A, dv);
@@ -1734,35 +1753,19 @@ private:
             dv.push_back(smpls[0].geniq);
         }
         
-        // expand features
-        Matrix trainF = expandMatrixLineary(trainFeatures);
-        Matrix testF = expandMatrixLineary(testFeatures);
-#ifdef LOCAL
-        storeMatrixAsLibSVM("/Users/yaric/scenario0.libsvm", trainF, dv);
-#endif
-        VI indices;
-        for (int i = 0; i < trainF.cols(); i++) {
-            if (i != 8 && i != 11) {
-                indices.push_back(i);
-            }
-        }
-        
-        Matrix trainFS = trainF.subMatrix(0, (int)trainF.rows() - 1, indices);
-        Matrix testFS = testF.subMatrix(0, (int)testF.rows() - 1, indices);
-        
         GBTConfig conf;
         conf.sampling_size_ratio = 0.5;
         conf.learning_rate = 0.001;
         conf.tree_min_nodes = 10;
-        conf.tree_depth = 3;//7
-        conf.tree_number = 1500;
+        conf.tree_depth = 7;
+        conf.tree_number = 3000;
         
         GradientBoostingMachine tree(conf.sampling_size_ratio, conf.learning_rate, conf.tree_number, conf.tree_min_nodes, conf.tree_depth);
-        PredictionForest *predictor = tree.train(trainFS.A, dv);
+        PredictionForest *predictor = tree.train(trainFeatures.A, dv);
         
         // predict
         for (int i = 0; i < testFeatures.rows(); i++) {
-            res.push_back(predictor->predict(testFS[i]));
+            res.push_back(predictor->predict(testFeatures[i]));
         }
         
 //        print(res);
