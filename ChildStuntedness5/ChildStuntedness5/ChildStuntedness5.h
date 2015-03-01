@@ -98,6 +98,68 @@ inline double getTime() {
     return tv.tv_sec + 1e-6 * tv.tv_usec;
 }
 
+struct RNG {
+    unsigned int MT[624];
+    int index;
+    
+    RNG(int seed = 1) {
+        init(seed);
+    }
+    
+    void init(int seed = 1) {
+        MT[0] = seed;
+        for(int i = 1; i < 624; i++) MT[i] = (1812433253UL * (MT[i-1] ^ (MT[i-1] >> 30)) + i);
+        index = 0;
+    }
+    
+    void generate() {
+        const unsigned int MULT[] = {0, 2567483615UL};
+        for(int i = 0; i < 227; i++) {
+            unsigned int y = (MT[i] & 0x8000000UL) + (MT[i+1] & 0x7FFFFFFFUL);
+            MT[i] = MT[i+397] ^ (y >> 1);
+            MT[i] ^= MULT[y&1];
+        }
+        for(int i = 227; i < 623; i++) {
+            unsigned int y = (MT[i] & 0x8000000UL) + (MT[i+1] & 0x7FFFFFFFUL);
+            MT[i] = MT[i-227] ^ (y >> 1);
+            MT[i] ^= MULT[y&1];
+        }
+        unsigned int y = (MT[623] & 0x8000000UL) + (MT[0] & 0x7FFFFFFFUL);
+        MT[623] = MT[623-227] ^ (y >> 1);
+        MT[623] ^= MULT[y&1];
+    }
+    
+    unsigned int rand() {
+        if (index == 0) {
+            generate();
+        }
+        
+        unsigned int y = MT[index];
+        y ^= y >> 11;
+        y ^= y << 7  & 2636928640UL;
+        y ^= y << 15 & 4022730752UL;
+        y ^= y >> 18;
+        index = index == 623 ? 0 : index + 1;
+        return y;
+    }
+    
+    inline int next() {
+        return rand();
+    }
+    
+    inline int next(int x) {
+        return rand() % x;
+    }
+    
+    inline int next(int a, int b) {
+        return a + (rand() % (b - a));
+    }
+    
+    inline double nextDouble() {
+        return (rand() + 0.5) * (1.0 / 4294967296.0);
+    }
+};
+
 //
 // ----------------------------
 //
@@ -119,7 +181,7 @@ random_unique(bidiiter begin, bidiiter end, size_t num_random) {
     size_t left = std::distance(begin, end);
     while (num_random--) {
         bidiiter r = begin;
-        std::advance(r, rand()%left);
+        std::advance(r, rand() % left);
         std::swap(*begin, *r);
         ++begin;
         --left;
@@ -291,19 +353,19 @@ public:
     /*
      *  The method to build regression tree
      */
-    void buildRegressionTree(const VC<VD> &feature_x, const VD &obs_y) {
-        size_t samples_num = feature_x.size();
+    void buildRegressionTree(const VC<VD> &samples_x, const VD &obs_y) {
+        size_t samples_num = samples_x.size();
         
         Assert(samples_num == obs_y.size() && samples_num != 0,
                "The number of samles does not match with the number of observations or the samples number is 0. Samples: %i", samples_num);
         
         Assert (m_min_nodes * 2 <= samples_num, "The number of samples is too small");
         
-        size_t feature_dim = feature_x[0].size();
+        size_t feature_dim = samples_x[0].size();
         features_importance.resize(feature_dim, 0);
         
         // build the regression tree
-        buildTree(feature_x, obs_y);
+        buildTree(samples_x, obs_y);
     }
     
 private:
@@ -311,7 +373,7 @@ private:
     /*
      *  The following function gets the best split given the data
      */
-    BestSplit findOptimalSplit(const VC<VD> &feature_x, const VD &obs_y) {
+    BestSplit findOptimalSplit(const VC<VD> &samples_x, const VD &obs_y) {
         
         BestSplit split_point;
         
@@ -319,13 +381,13 @@ private:
             return split_point;
         }
         
-        size_t samples_num = feature_x.size();
+        size_t samples_num = samples_x.size();
         
         if (m_min_nodes * 2 > samples_num) {
             // the number of observations in terminals is too small
             return split_point;
         }
-        size_t feature_dim = feature_x[0].size();
+        size_t feature_dim = samples_x[0].size();
         
         
         double min_err = 0;
@@ -337,13 +399,13 @@ private:
             // get the optimal split for the loop_index feature
             
             // get data sorted by the loop_i-th feature
-            VC<ListData> list_feature;
+            VC<ListData> list_by_feature;
             for (int loop_j = 0; loop_j < samples_num; loop_j++) {
-                list_feature.push_back(ListData(feature_x[loop_j][loop_i], obs_y[loop_j]));
+                list_by_feature.push_back(ListData(samples_x[loop_j][loop_i], obs_y[loop_j]));
             }
             
-            // sort the list
-            sort(list_feature.begin(), list_feature.end());
+            // sort the list by feature value ascending
+            sort(list_by_feature.begin(), list_by_feature.end());
             
             // begin to split
             double sum_left = 0.0;
@@ -357,7 +419,7 @@ private:
             
             // initialize left
             for (int loop_j = 0; loop_j < m_min_nodes; loop_j++) {
-                ListData fetched_data = list_feature[loop_j];
+                ListData fetched_data = list_by_feature[loop_j];
                 sum_left += fetched_data.m_y;
                 count_left++;
             }
@@ -365,7 +427,7 @@ private:
             
             // initialize right
             for (int loop_j = m_min_nodes; loop_j < samples_num; loop_j++) {
-                ListData fetched_data = list_feature[loop_j];
+                ListData fetched_data = list_by_feature[loop_j];
                 sum_right += fetched_data.m_y;
                 count_right++;
             }
@@ -379,17 +441,17 @@ private:
             current_err = -1 * count_left * mean_left * mean_left - count_right * mean_right * mean_right;
             
             // current node value
-            current_node_value = (list_feature[m_min_nodes].m_x + list_feature[m_min_nodes - 1].m_x) / 2;
+            current_node_value = (list_by_feature[m_min_nodes].m_x + list_by_feature[m_min_nodes - 1].m_x) / 2;
             
-            if (current_err < min_err && current_node_value != list_feature[m_min_nodes - 1].m_x) {
+            if (current_err < min_err && current_node_value != list_by_feature[m_min_nodes - 1].m_x) {
                 split_index = loop_i;
                 node_value = current_node_value;
                 min_err = current_err;
             }
             
             // begin to find the best split point for the feature
-            for (int loop_j = m_min_nodes; loop_j <= samples_num - m_min_nodes - 1; loop_j++) {
-                ListData fetched_data = list_feature[loop_j];
+            for (int loop_j = m_min_nodes; loop_j < samples_num - m_min_nodes; loop_j++) {
+                ListData fetched_data = list_by_feature[loop_j];
                 double y = fetched_data.m_y;
                 sum_left += y;
                 count_left++;
@@ -403,7 +465,7 @@ private:
                 
                 current_err = -1 * count_left * mean_left * mean_left - count_right * mean_right * mean_right;
                 // current node value
-                current_node_value = (list_feature[loop_j + 1].m_x + fetched_data.m_x) / 2;
+                current_node_value = (list_by_feature[loop_j + 1].m_x + fetched_data.m_x) / 2;
                 
                 if (current_err < min_err && current_node_value != fetched_data.m_x) {
                     split_index = loop_i;
@@ -429,7 +491,7 @@ private:
      *  Split data into the left node and the right node based on the best splitting
      *  point.
      */
-    SplitRes splitData(const VC<VD> &feature_x, const VD &obs_y, const BestSplit &best_split) {
+    SplitRes splitData(const VC<VD> &samples_x, const VD &obs_y, const BestSplit &best_split) {
         
         SplitRes split_res;
         
@@ -438,15 +500,12 @@ private:
         
         size_t samples_count = obs_y.size();
         for (int loop_i = 0; loop_i < samples_count; loop_i++) {
-            VD ith_feature = feature_x[loop_i];
-            if (ith_feature[feature_index] < node_value) {
-                // append to the left feature
-                split_res.m_feature_left.push_back(ith_feature);
-                // observation
+            VD ith_sample = samples_x[loop_i];
+            if (ith_sample[feature_index] < node_value) {
+                split_res.m_feature_left.push_back(ith_sample);
                 split_res.m_obs_left.push_back(obs_y[loop_i]);
             } else {
-                // append to the right
-                split_res.m_feature_right.push_back(ith_feature);
+                split_res.m_feature_right.push_back(ith_sample);
                 split_res.m_obs_right.push_back(obs_y[loop_i]);
             }
         }
@@ -454,14 +513,14 @@ private:
         // update terminal values
         if (m_type == AVERAGE) {
             double mean_value = 0.0;
-            for (double obsL : split_res.m_obs_left) {
+            for (const double obsL : split_res.m_obs_left) {
                 mean_value += obsL;
             }
             mean_value = mean_value / split_res.m_obs_left.size();
             split_res.m_left_value = mean_value;
             
             mean_value = 0.0;
-            for (double obsR : split_res.m_obs_right) {
+            for (const double obsR : split_res.m_obs_right) {
                 mean_value += obsR;
             }
             mean_value = mean_value / split_res.m_obs_right.size();
@@ -512,12 +571,12 @@ private:
     /*
      *  The following function builds a regression tree from data
      */
-    Node* buildTree(const VC<VD> &feature_x, const VD &obs_y) {
+    Node* buildTree(const VC<VD> &samples_x, const VD &obs_y) {
         
         // obtain the optimal split point
         m_current_depth = m_current_depth + 1;
         
-        BestSplit best_split = findOptimalSplit(feature_x, obs_y);
+        BestSplit best_split = findOptimalSplit(samples_x, obs_y);
         
         if (!best_split.m_status) {
             if (m_current_depth > 0)
@@ -530,10 +589,11 @@ private:
         features_importance[best_split.m_feature_index] += 1;
         
         // split the data
-        SplitRes split_data = splitData(feature_x, obs_y, best_split);
+        SplitRes split_data = splitData(samples_x, obs_y, best_split);
         
         // append current value to tree
-        Node *new_node = new Node(best_split.m_node_value, best_split.m_feature_index, split_data.m_left_value, split_data.m_right_value);
+        Node *new_node = new Node(best_split.m_node_value, best_split.m_feature_index,
+                                  split_data.m_left_value, split_data.m_right_value);
         
         if (!m_root) {
             m_root = new_node;
@@ -561,11 +621,6 @@ public:
     VC<RegressionTree> m_trees;
     // the learning rate
     double m_combine_weight;
-    
-    // the OOB error value
-    double oob_error;
-    // the OOB samples size
-    int oob_samples_size;
     
     // construction function
     PredictionForest(double learning_rate) : m_init_value(0.0), m_combine_weight(learning_rate) {}
@@ -642,10 +697,6 @@ public:
         Assert(samples_num == input_x.size() && samples_num > 0,
                "Error: The input_x size should not be zero and should match the size of input_y");
         
-        // holds indices of training data samples used for trees training
-        // this will be used later for OOB error calculation
-        VI used_indices(samples_num, -1);
-        
         // get an initial guess of the function
         double mean_y = 0.0;
         for (double d : input_y) {
@@ -671,7 +722,7 @@ public:
             // calculate the gradient
             VD gradient;
             index = 0;
-            for (double d : input_y) {
+            for (const double d : input_y) {
                 gradient.push_back(d - h_value[index]);
                 
                 // next
@@ -692,13 +743,10 @@ public:
                 VC<VD> train_x;
                 VD train_y;
                 
-                for (int sel_index : sampled_index) {
+                for (const int sel_index : sampled_index) {
                     // assign value
                     train_y.push_back(gradient[sel_index]);
                     train_x.push_back(input_x[sel_index]);
-                    
-                    // mark index as used
-                    used_indices[sel_index] = 1;
                 }
                 
                 // fit a regression tree
@@ -763,26 +811,6 @@ public:
             // next iteration
             iter_index++;
         }
-        
-        // find OOB error
-        VI oob_data;
-        int i, sel_index;
-        for (i = 0; i < samples_num; i++) {
-            if (used_indices[i] < 0) {
-                oob_data.push_back(i);
-            }
-        }
-        double oob_error = 0.0, test_y;
-        for (i = 0; i < oob_data.size(); i++) {
-            sel_index = oob_data[i];
-            test_y = res_fun->predict(input_x[sel_index]);
-            oob_error += (input_y[sel_index] - test_y) * (input_y[sel_index] - test_y);
-        }
-        oob_error /= oob_data.size();
-        
-        // store OOB
-        res_fun->oob_error = oob_error;
-        res_fun->oob_samples_size = (int)oob_data.size();
         
         return res_fun;
     }
@@ -1326,16 +1354,14 @@ VVE readEntries(const VS &data, const int scenario) {
     return rv;
 }
 
-void correctFeatures(const VVE &data) {
-    
-}
-
 Matrix& prepareScenario1Features(VVE &data) {
     // sexn, gagebrth, birthwt, birthlen, apgar1, apgar5
-    int gagebrth = 0, apgar1 = 0, apgar5 = 0;
+    int gagebrth = 0;
     VI counts(5, 0);
     VVI birthwt(2, VI(2, 0));
     VVI birthlen(2, VI(2, 0));
+    VVI apgar1, apgar5;
+    int idx = 0;
     for (const VE &smpls : data) {
         if (smpls[0].gagebrth != Entry::NVL) {
             gagebrth += smpls[0].gagebrth;
@@ -1349,20 +1375,26 @@ Matrix& prepareScenario1Features(VVE &data) {
             birthlen[smpls[0].sexn - 1][0] += smpls[0].birthlen;
             birthlen[smpls[0].sexn - 1][1]++;
         }
+        idx = smpls[0].sexn * smpls[0].gagebrth;
         if (smpls[0].apgar1 != Entry::NVL) {
-            apgar1 += smpls[0].apgar1;
-            counts[3]++;
+            if (idx >= apgar1.size()) {
+                apgar1.resize(idx + 1, VI(2, 0));
+            }
+            apgar1[idx][0] += smpls[0].apgar1;
+            apgar1[idx][1]++;
         }
         if (smpls[0].apgar5 != Entry::NVL) {
-            apgar5 += smpls[0].apgar5;
-            counts[4]++;
+            if (idx >= apgar5.size()) {
+                apgar5.resize(idx + 1, VI(2, 0));
+            }
+            apgar5[idx][0] += smpls[0].apgar5;
+            apgar5[idx][1]++;
         }
     }
     // find mean average
     gagebrth    /= counts[0];
-    apgar1      /= counts[3];
-    apgar5      /= counts[4];
     
+    RNG rnd;
     // build data matrix
     VVD features;
     for (VE &smpls : data) {
@@ -1380,8 +1412,8 @@ Matrix& prepareScenario1Features(VVE &data) {
         }
         row.push_back(smpls[0].birthlen);
         
-        row.push_back(smpls[0].apgar1 == Entry::NVL ? apgar1 : smpls[0].apgar1);
-        row.push_back(smpls[0].apgar5 == Entry::NVL ? apgar5 : smpls[0].apgar5);
+        row.push_back(smpls[0].apgar1 == Entry::NVL ? rnd.next() % 11 : smpls[0].apgar1);
+        row.push_back(smpls[0].apgar5 == Entry::NVL ? rnd.next() % 11 : smpls[0].apgar5);
         features.push_back(row);
     }
     
@@ -1396,7 +1428,7 @@ double predictWTKG(const VE &smpls, const int pos) {
     if (low < 0 || high >=  smpls.size()) {
         return Entry::NVL;
     }
-
+    
     double w = (smpls[pos].agedays - smpls[low].agedays) / (smpls[high].agedays - smpls[low].agedays);
     if (smpls[low].wtkg == Entry::NVL || smpls[high].wtkg == Entry::NVL) {
         return Entry::NVL;
@@ -1420,7 +1452,7 @@ double predictL(const VE &smpls, const int pos) {
     if (lowL == Entry::NVL || highL == Entry::NVL) {
         return Entry::NVL;
     }
-
+    
     double L = lowL * (1 - w) + highL * w;
     return L;
 }
@@ -1455,7 +1487,7 @@ Matrix& prepareScenario2Features(const VVE &data) {
                 wtkg += w;
                 counts[0]++;
             }
-
+            
             // add lenght
             if (smpls[i].htcm != Entry::NVL) {
                 l = smpls[i].htcm;
@@ -1638,7 +1670,7 @@ public:
             
             res = rankScenario3(trainFeatures0, trainFeatures1, trainFeatures2, trainEntries, testFeatures0, testFeatures1, testFeatures2);
         }
-
+        
         return res;
     }
     
@@ -1675,7 +1707,7 @@ private:
         conf.tree_min_nodes = 10;
         conf.tree_depth = 7;
         conf.tree_number = 2500;
-
+        
         
         GradientBoostingMachine tree(conf.sampling_size_ratio, conf.learning_rate, conf.tree_number, conf.tree_min_nodes, conf.tree_depth);
         PredictionForest *predictor = tree.train(trainFeatures.A, dv);
@@ -1685,7 +1717,7 @@ private:
             res.push_back(predictor->predict(testFeatures[i]));
         }
         
-//        print(res);
+        //        print(res);
         
         double finishTime = getTime();
         
@@ -1715,8 +1747,8 @@ private:
         
         Matrix testFeatures = testFeatures0;
         testFeatures.concat(testFeatures1);
-
-
+        
+        
         VD res;
         GBTConfig conf;
         conf.sampling_size_ratio = 0.5;
@@ -1733,7 +1765,7 @@ private:
             res.push_back(predictor->predict(testFeatures[i]));
         }
         
-//        print(res);
+        //        print(res);
         
         double finishTime = getTime();
         
@@ -1758,7 +1790,7 @@ private:
         conf.learning_rate = 0.001;
         conf.tree_min_nodes = 10;
         conf.tree_depth = 7;
-        conf.tree_number = 3000;
+        conf.tree_number = 2100;//3000;
         
         GradientBoostingMachine tree(conf.sampling_size_ratio, conf.learning_rate, conf.tree_number, conf.tree_min_nodes, conf.tree_depth);
         PredictionForest *predictor = tree.train(trainFeatures.A, dv);
@@ -1768,7 +1800,7 @@ private:
             res.push_back(predictor->predict(testFeatures[i]));
         }
         
-//        print(res);
+        //        print(res);
         
         double finishTime = getTime();
         
