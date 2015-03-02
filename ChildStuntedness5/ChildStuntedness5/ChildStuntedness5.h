@@ -1600,20 +1600,21 @@ Matrix& prepareScenario3Features(const VVE &data) {
     meducyrs = safeDiv(meducyrs,    counts[7], 0);
     demo2n = safeDiv(demo2n,        counts[8], 0);
     
+    RNG rnd;
     // build data matrix
     VVD features;
     for (const VE &smpls : data) {
         VD row;
         row.push_back(smpls[0].siteid);
-        row.push_back(smpls[0].feedingn != Entry::NVL ? smpls[0].feedingn : feedingn);
+        row.push_back(smpls[0].feedingn != Entry::NVL ? smpls[0].feedingn : rnd.next(3) + 1 );
         row.push_back(smpls[0].mage != Entry::NVL ? smpls[0].mage : mage);
-        row.push_back(smpls[0].demo1n != Entry::NVL ? smpls[0].demo1n : demo1n);
-        row.push_back(smpls[0].mmaritn != Entry::NVL ? smpls[0].mmaritn : mmaritn);
-        row.push_back(smpls[0].mcignum != Entry::NVL ? smpls[0].mcignum : mcignum);
+        row.push_back(smpls[0].demo1n != Entry::NVL ? smpls[0].demo1n : rnd.next(2) + 1);
+        row.push_back(smpls[0].mmaritn != Entry::NVL ? smpls[0].mmaritn : rnd.next(6) + 1);
+        row.push_back(smpls[0].mcignum != Entry::NVL ? smpls[0].mcignum : 0);
         row.push_back(smpls[0].parity != Entry::NVL ? smpls[0].parity : parity);
         row.push_back(smpls[0].gravida != Entry::NVL ? smpls[0].gravida : gravida);
         row.push_back(smpls[0].meducyrs != Entry::NVL ? smpls[0].meducyrs : meducyrs);
-        row.push_back(smpls[0].demo2n != Entry::NVL ? smpls[0].demo2n : demo2n);
+        row.push_back(smpls[0].demo2n != Entry::NVL ? smpls[0].demo2n : rnd.next(5) + 1);
         
         features.push_back(row);
     }
@@ -1790,7 +1791,7 @@ private:
         conf.learning_rate = 0.001;
         conf.tree_min_nodes = 10;
         conf.tree_depth = 7;
-        conf.tree_number = 2100;//3000;
+        conf.tree_number = 3000;//2100;//
         
         GradientBoostingMachine tree(conf.sampling_size_ratio, conf.learning_rate, conf.tree_number, conf.tree_min_nodes, conf.tree_depth);
         PredictionForest *predictor = tree.train(trainFeatures.A, dv);
