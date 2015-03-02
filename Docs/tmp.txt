@@ -508,3 +508,60 @@ Training subjects: 881, test subjects: 454
 Rank time: 37.415254
 9.) Score = 291621.395245, sse: 64671.254463, sse0: 91294.759650
 Score = 139413.756675
+
+=================================================================================================
+
+Test type: 0, scenario: 0, training size: 881, test size: 454
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 0 ===========
+Rank time: 11.195909
+1.) Score = 38552.522843, sse: 94422.742326, sse0: 98208.944919
+---------------------------------------------
+Test type: 0, scenario: 1, training size: 4055, test size: 2113
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 1 ===========
+Rank time: 30.624097
+2.) Score = 39038.182035, sse: 99114.431250, sse0: 103140.863036
+---------------------------------------------
+Test type: 0, scenario: 2, training size: 4066, test size: 2091
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 2 ===========
+Rank time: 38.606551
+3.) Score = 322604.672336, sse: 65783.495159, sse0: 97112.413494
+---------------------------------------------
+Test type: 0, scenario: 0, training size: 881, test size: 454
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 0 ===========
+Rank time: 11.914410
+4.) Score = 0.000000, sse: 103220.283803, sse0: 102431.567193
+---------------------------------------------
+Test type: 0, scenario: 1, training size: 4083, test size: 2086
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 1 ===========
+Rank time: 32.436929
+5.) Score = 55776.523451, sse: 109213.345541, sse0: 115664.721598
+---------------------------------------------
+Test type: 0, scenario: 2, training size: 4062, test size: 2071
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 2 ===========
+Rank time: 37.439172
+6.) Score = 362950.670011, sse: 63131.645638, sse0: 99100.089532
+---------------------------------------------
+Test type: 0, scenario: 0, training size: 881, test size: 454
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 0 ===========
+Rank time: 11.156717
+7.) Score = 67741.517076, sse: 96168.245665, sse0: 103156.203378
+---------------------------------------------
+Test type: 0, scenario: 1, training size: 4035, test size: 2116
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 1 ===========
+Rank time: 31.101301
+8.) Score = 78525.694386, sse: 80958.258776, sse0: 87857.315481
+---------------------------------------------
+Test type: 0, scenario: 2, training size: 4066, test size: 2114
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 2 ===========
+Rank time: 38.452154
+9.) Score = 290915.808742, sse: 64735.670813, sse0: 91294.759650
+Score = 139567.287876
