@@ -565,3 +565,225 @@ Training subjects: 881, test subjects: 454
 Rank time: 38.452154
 9.) Score = 290915.808742, sse: 64735.670813, sse0: 91294.759650
 Score = 139567.287876
+
+=================================================================================================
+
+Test type: 0, scenario: 0, training size: 881, test size: 454
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 0 ===========
+sampsize: 881, nodesize: 5, nsum 881, nrnodes 1763
+maxcat: 1, doprox: 0, oobProx 0, biascorr 0
+cat 6
+impout 6
+impmat 1
+impSD 6
+Rank time: 0.608770
+0.) Score = 39931.935847, sse: 94287.271631, sse0: 98208.944919
+---------------------------------------------
+Test type: 0, scenario: 1, training size: 4055, test size: 2113
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 1 ===========
+sampsize: 881, nodesize: 5, nsum 881, nrnodes 1763
+maxcat: 1, doprox: 0, oobProx 0, biascorr 0
+cat 13
+impout 13
+impmat 1
+impSD 13
+Rank time: 7.818019
+1.) Score = 49187.782617, sse: 98067.592686, sse0: 103140.863036
+---------------------------------------------
+Test type: 0, scenario: 2, training size: 4066, test size: 2091
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 2 ===========
+sampsize: 881, nodesize: 5, nsum 881, nrnodes 1763
+maxcat: 1, doprox: 0, oobProx 0, biascorr 0
+cat 23
+impout 23
+impmat 1
+impSD 23
+Rank time: 16.854170
+2.) Score = 331172.779344, sse: 64951.425608, sse0: 97112.413494
+---------------------------------------------
+Test type: 0, scenario: 0, training size: 881, test size: 454
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 0 ===========
+sampsize: 881, nodesize: 5, nsum 881, nrnodes 1763
+maxcat: 1, doprox: 0, oobProx 0, biascorr 0
+cat 6
+impout 6
+impmat 1
+impSD 6
+Rank time: 0.612115
+3.) Score = 26645.872629, sse: 99702.188700, sse0: 102431.567193
+---------------------------------------------
+Test type: 0, scenario: 1, training size: 4083, test size: 2086
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 1 ===========
+sampsize: 881, nodesize: 5, nsum 881, nrnodes 1763
+maxcat: 1, doprox: 0, oobProx 0, biascorr 0
+cat 13
+impout 13
+impmat 1
+impSD 13
+Rank time: 8.284782
+4.) Score = 48441.568520, sse: 110061.741061, sse0: 115664.721598
+---------------------------------------------
+Test type: 0, scenario: 2, training size: 4062, test size: 2071
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 2 ===========
+sampsize: 881, nodesize: 5, nsum 881, nrnodes 1763
+maxcat: 1, doprox: 0, oobProx 0, biascorr 0
+cat 23
+impout 23
+impmat 1
+impSD 23
+Rank time: 16.760124
+5.) Score = 351415.111132, sse: 64274.820556, sse0: 99100.089532
+---------------------------------------------
+Test type: 0, scenario: 0, training size: 881, test size: 454
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 0 ===========
+sampsize: 881, nodesize: 5, nsum 881, nrnodes 1763
+maxcat: 1, doprox: 0, oobProx 0, biascorr 0
+cat 6
+impout 6
+impmat 1
+impSD 6
+Rank time: 0.590801
+6.) Score = 69967.236576, sse: 95938.648892, sse0: 103156.203378
+---------------------------------------------
+Test type: 0, scenario: 1, training size: 4035, test size: 2116
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 1 ===========
+sampsize: 881, nodesize: 5, nsum 881, nrnodes 1763
+maxcat: 1, doprox: 0, oobProx 0, biascorr 0
+cat 13
+impout 13
+impmat 1
+impSD 13
+Rank time: 8.297824
+7.) Score = 85952.983309, sse: 80305.717110, sse0: 87857.315481
+---------------------------------------------
+Test type: 0, scenario: 2, training size: 4066, test size: 2114
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 2 ===========
+sampsize: 881, nodesize: 5, nsum 881, nrnodes 1763
+maxcat: 1, doprox: 0, oobProx 0, biascorr 0
+cat 23
+impout 23
+impmat 1
+impSD 23
+Rank time: 17.200992
+8.) Score = 304239.970420, sse: 63519.244675, sse0: 91294.759650
+Score = 145217.248933
+
+=================================================================================================
+
+Test type: 0, scenario: 0, training size: 881, test size: 454
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 0 ===========
+sampsize: 881, nodesize: 5, nsum 881, nrnodes 1763
+maxcat: 1, doprox: 0, oobProx 0, biascorr 0
+cat 6
+impout 6
+impmat 1
+impSD 6
+Rank time: 0.672214
+0.) Score = 39931.935847, sse: 94287.271631, sse0: 98208.944919
+---------------------------------------------
+Test type: 0, scenario: 1, training size: 4055, test size: 2113
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 1 ===========
+sampsize: 881, nodesize: 5, nsum 881, nrnodes 1763
+maxcat: 1, doprox: 0, oobProx 0, biascorr 0
+cat 13
+impout 13
+impmat 1
+impSD 13
+Rank time: 3.144265
+1.) Score = 52811.005288, sse: 97693.890373, sse0: 103140.863036
+---------------------------------------------
+Test type: 0, scenario: 2, training size: 4066, test size: 2091
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 2 ===========
+sampsize: 881, nodesize: 5, nsum 881, nrnodes 1763
+maxcat: 1, doprox: 0, oobProx 0, biascorr 0
+cat 23
+impout 23
+impmat 1
+impSD 23
+Rank time: 13.702998
+2.) Score = 333684.652963, sse: 64707.491499, sse0: 97112.413494
+---------------------------------------------
+Test type: 0, scenario: 0, training size: 881, test size: 454
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 0 ===========
+sampsize: 881, nodesize: 5, nsum 881, nrnodes 1763
+maxcat: 1, doprox: 0, oobProx 0, biascorr 0
+cat 6
+impout 6
+impmat 1
+impSD 6
+Rank time: 0.602265
+3.) Score = 26645.872629, sse: 99702.188700, sse0: 102431.567193
+---------------------------------------------
+Test type: 0, scenario: 1, training size: 4083, test size: 2086
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 1 ===========
+sampsize: 881, nodesize: 5, nsum 881, nrnodes 1763
+maxcat: 1, doprox: 0, oobProx 0, biascorr 0
+cat 13
+impout 13
+impmat 1
+impSD 13
+Rank time: 3.020914
+4.) Score = 55128.699347, sse: 109288.275936, sse0: 115664.721598
+---------------------------------------------
+Test type: 0, scenario: 2, training size: 4062, test size: 2071
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 2 ===========
+sampsize: 881, nodesize: 5, nsum 881, nrnodes 1763
+maxcat: 1, doprox: 0, oobProx 0, biascorr 0
+cat 23
+impout 23
+impmat 1
+impSD 23
+Rank time: 13.621569
+5.) Score = 345121.406181, sse: 64898.527280, sse0: 99100.089532
+---------------------------------------------
+Test type: 0, scenario: 0, training size: 881, test size: 454
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 0 ===========
+sampsize: 881, nodesize: 5, nsum 881, nrnodes 1763
+maxcat: 1, doprox: 0, oobProx 0, biascorr 0
+cat 6
+impout 6
+impmat 1
+impSD 6
+Rank time: 0.589566
+6.) Score = 69967.236576, sse: 95938.648892, sse0: 103156.203378
+---------------------------------------------
+Test type: 0, scenario: 1, training size: 4035, test size: 2116
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 1 ===========
+sampsize: 881, nodesize: 5, nsum 881, nrnodes 1763
+maxcat: 1, doprox: 0, oobProx 0, biascorr 0
+cat 13
+impout 13
+impmat 1
+impSD 13
+Rank time: 3.095518
+7.) Score = 101829.095946, sse: 78910.884473, sse0: 87857.315481
+---------------------------------------------
+Test type: 0, scenario: 2, training size: 4066, test size: 2114
+Training subjects: 881, test subjects: 454
+=========== Rank for scenario 2 ===========
+sampsize: 881, nodesize: 5, nsum 881, nrnodes 1763
+maxcat: 1, doprox: 0, oobProx 0, biascorr 0
+cat 23
+impout 23
+impmat 1
+impSD 23
+Rank time: 13.800227
+8.) Score = 307064.333230, sse: 63261.395151, sse0: 91294.759650
+Score = 148020.470890
