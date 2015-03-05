@@ -92,7 +92,7 @@ namespace am {
                     }
                     // calculate score
                     double s = 1000000 * fmax(0, 1.0 - sse/sse0);
-                    Printf("%i.) Score = %f, sse: %f, sse0: %f\n", i + 1, s, sse, sse0);
+                    Printf("%i.) Score = %f, sse: %f, sse0: %f\n", i, s, sse, sse0);
                     score += s;
                 }
                 return score / subsetsNum;
